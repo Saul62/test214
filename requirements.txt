@@ -4,4 +4,4 @@ pandas==2.2.2
 scikit-learn==1.7.2
 joblib==1.4.2
 shap==0.45.0
-tabpfn==2.0.9
+tabpfn==6.0.5

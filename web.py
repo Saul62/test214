@@ -246,14 +246,31 @@ def render_shap_force_plot(
         else:
             expected_value = float(expected_value)
 
-        force_plot = shap.force_plot(
-            expected_value,
-            shap_row,
-            input_df.iloc[0],
-            feature_names=features,
-        )
-        html = f"<head>{shap.getjs()}</head><body>{force_plot.html()}</body>"
-        components.html(html, height=420, scrolling=False)
+        # Force JS-based rendering; do not use matplotlib backend on cloud.
+        try:
+            force_plot = shap.force_plot(
+                expected_value,
+                shap_row,
+                input_df.iloc[0],
+                feature_names=features,
+                matplotlib=False,
+                show=False,
+            )
+        except TypeError:
+            # Compatibility with older/newer SHAP signatures.
+            force_plot = shap.force_plot(
+                expected_value,
+                shap_row,
+                input_df.iloc[0],
+                feature_names=features,
+                matplotlib=False,
+            )
+
+        if hasattr(force_plot, "html"):
+            html = f"<head>{shap.getjs()}</head><body>{force_plot.html()}</body>"
+            components.html(html, height=420, scrolling=False)
+        else:
+            st.warning("SHAP force plot object has no HTML renderer in this environment.")
     except Exception as exc:
         st.warning(f"Failed to generate SHAP force plot: {exc}")
 

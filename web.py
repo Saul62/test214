@@ -21,6 +21,7 @@ st.set_page_config(
 
 APP_TITLE = "Sex-specific ICH Prognosis Prediction Model"
 APP_SUBTITLE = "Switch between male and female models and run prognosis prediction."
+CLASS_LABELS = {0: "Favorable outcome", 1: "Poor outcome"}
 
 MALE_FEATURES = ["Age", "NIHSS", "GCS", "Hematoma volume", "WBC", "SIRI"]
 FEMALE_FEATURES = ["BUN", "Age", "NIHSS", "GCS", "Hematoma volume", "Time to CT"]
@@ -189,6 +190,14 @@ def predict_with_model(model: Any, input_df: pd.DataFrame) -> dict[str, Any]:
     return result
 
 
+def format_class_label(value: Any) -> str:
+    try:
+        ivalue = int(value)
+    except Exception:
+        return str(value)
+    return CLASS_LABELS.get(ivalue, f"Class {ivalue}")
+
+
 def _predict_positive_class_probability(model: Any, features: list[str], data: Any) -> np.ndarray:
     if isinstance(data, pd.DataFrame):
         data_df = data.copy()
@@ -321,10 +330,6 @@ def main() -> None:
                     step=float(stat["step"]),
                     format="%.4f",
                     key=f"{model_choice}_{feature}",
-                    help=(
-                        f"Reference range from sample data: "
-                        f"{stat['min']:.4f} to {stat['max']:.4f}"
-                    ),
                 )
 
         submitted = st.form_submit_button("Run Prediction", use_container_width=True)
@@ -346,23 +351,26 @@ def main() -> None:
         return
 
     st.subheader("Prediction Result")
-    st.metric("Predicted Class", str(result["prediction"]))
+    st.metric("Predicted Outcome", format_class_label(result["prediction"]))
 
     if result["prob_class_0"] is not None and result["prob_class_1"] is not None:
         c1, c2 = st.columns(2)
         with c1:
-            st.markdown("**Probability of Class 0**")
+            st.markdown("**Probability of Favorable outcome**")
             st.progress(float(result["prob_class_0"]))
             st.write(f"{result['prob_class_0']:.2%}")
         with c2:
-            st.markdown("**Probability of Class 1**")
+            st.markdown("**Probability of Poor outcome**")
             st.progress(float(result["prob_class_1"]))
             st.write(f"{result['prob_class_1']:.2%}")
     elif result["proba_vector"] is not None and result["classes"] is not None:
         proba_df = pd.DataFrame(
-            {"Class": [str(c) for c in result["classes"]], "Probability": result["proba_vector"]}
+            {
+                "Outcome": [format_class_label(c) for c in result["classes"]],
+                "Probability": result["proba_vector"],
+            }
         )
-        st.markdown("**Class Probabilities**")
+        st.markdown("**Outcome Probabilities**")
         st.dataframe(proba_df, use_container_width=True)
     else:
         st.warning("Model does not expose `predict_proba`; only class prediction is shown.")
